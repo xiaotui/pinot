@@ -18,11 +18,13 @@ package com.linkedin.pinot.core.segment.index.loader;
 import com.linkedin.pinot.common.metadata.segment.IndexLoadingConfigMetadata;
 import com.linkedin.pinot.common.segment.ReadMode;
 import com.linkedin.pinot.common.segment.SegmentMetadata;
+import com.linkedin.pinot.common.utils.TarGzCompressionUtils;
 import com.linkedin.pinot.core.indexsegment.IndexSegment;
 import com.linkedin.pinot.core.indexsegment.generator.SegmentGeneratorConfig;
 import com.linkedin.pinot.core.indexsegment.generator.SegmentVersion;
 import com.linkedin.pinot.core.segment.creator.SegmentIndexCreationDriver;
 import com.linkedin.pinot.core.segment.creator.impl.SegmentCreationDriverFactory;
+import com.linkedin.pinot.core.segment.creator.impl.V1Constants;
 import com.linkedin.pinot.core.segment.index.SegmentMetadataImpl;
 import com.linkedin.pinot.core.segment.index.converter.SegmentV1V2ToV3FormatConverter;
 import com.linkedin.pinot.core.segment.store.SegmentDirectoryPaths;
@@ -45,6 +47,9 @@ import org.testng.annotations.Test;
 public class LoadersTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(Loaders.class);
   private static final String AVRO_DATA = "data/test_data-mv.avro";
+  private static final String PADDING_OLD = "data/paddingOld.tar.gz";
+  private static final String PADDING_PERCENT = "data/paddingPercent.tar.gz";
+  private static final String PADDING_NULL = "data/paddingNull.tar.gz";
   private File INDEX_DIR;
   private File segmentDirectory;
   private IndexLoadingConfigMetadata v1LoadingConfig;
@@ -147,5 +152,30 @@ public class LoadersTest {
     }
   }
 
+  @Test
+  public void testPadding()
+      throws Exception {
+    TarGzCompressionUtils.unTar(new File(TestUtils.getFileFromResourceUrl(
+        Loaders.class.getClassLoader()
+            .getResource(PADDING_OLD))), INDEX_DIR);
+    File segmentDirectory = new File(INDEX_DIR, "paddingOld");
+    SegmentMetadataImpl originalMetadata = new SegmentMetadataImpl(segmentDirectory);
+    Assert.assertEquals(originalMetadata.getColumnMetadataFor("name").getPaddingCharacter(),
+        V1Constants.Str.LEGACY_STRING_PAD_CHAR);
+    TarGzCompressionUtils.unTar(new File(TestUtils.getFileFromResourceUrl(
+        Loaders.class.getClassLoader()
+            .getResource(PADDING_PERCENT))), INDEX_DIR);
+    segmentDirectory = new File(INDEX_DIR, "paddingPercent");
+    originalMetadata = new SegmentMetadataImpl(segmentDirectory);
+    Assert.assertEquals(originalMetadata.getColumnMetadataFor("name").getPaddingCharacter(),
+        V1Constants.Str.LEGACY_STRING_PAD_CHAR);
+    TarGzCompressionUtils.unTar(new File(TestUtils.getFileFromResourceUrl(
+        Loaders.class.getClassLoader()
+            .getResource(PADDING_NULL))), INDEX_DIR);
+    segmentDirectory = new File(INDEX_DIR, "paddingNull");
+    originalMetadata = new SegmentMetadataImpl(segmentDirectory);
+    Assert.assertEquals(originalMetadata.getColumnMetadataFor("name").getPaddingCharacter(),
+        V1Constants.Str.DEFAULT_STRING_PAD_CHAR);
+  }
 
 }
