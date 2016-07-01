@@ -16,16 +16,20 @@
 package com.linkedin.pinot.server.starter.helix;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.io.FileUtils;
 import org.apache.helix.ZNRecord;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
+import org.codehaus.jackson.JsonParseException;
+import org.codehaus.jackson.map.JsonMappingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.linkedin.pinot.common.Utils;
 import com.linkedin.pinot.common.config.AbstractTableConfig;
 import com.linkedin.pinot.common.data.DataManager;
+import com.linkedin.pinot.common.data.Schema;
 import com.linkedin.pinot.common.metadata.ZKMetadataProvider;
 import com.linkedin.pinot.common.metadata.segment.OfflineSegmentZKMetadata;
 import com.linkedin.pinot.common.segment.SegmentMetadata;
@@ -33,6 +37,7 @@ import com.linkedin.pinot.common.segment.SegmentMetadataLoader;
 import com.linkedin.pinot.common.segment.fetcher.SegmentFetcherFactory;
 import com.linkedin.pinot.common.utils.CommonConstants;
 import com.linkedin.pinot.common.utils.TarGzCompressionUtils;
+import com.linkedin.pinot.common.utils.helix.PinotHelixPropertyStoreZnRecordProvider;
 import com.linkedin.pinot.core.segment.index.SegmentMetadataImpl;
 
 public class SegmentFetcherAndLoader {
@@ -74,12 +79,25 @@ public class SegmentFetcherAndLoader {
     _segmentLoadMinRetryDelayMs = minRetryDelayMillis;
 
     SegmentFetcherFactory.initSegmentFetcherFactory(pinotHelixProperties);
+
   }
 
   public void addOrReplaceOfflineSegment(String tableName, String segmentId, boolean retryOnFailure) {
     OfflineSegmentZKMetadata offlineSegmentZKMetadata =
         ZKMetadataProvider.getOfflineSegmentZKMetadata(_propertyStore, tableName, segmentId);
-
+    Schema schema = null;
+    try {
+      PinotHelixPropertyStoreZnRecordProvider propertyStoreHelper =
+          PinotHelixPropertyStoreZnRecordProvider.forSchema(_propertyStore);
+      ZNRecord record = propertyStoreHelper.get(tableName);
+      if (record != null) {
+        LOGGER.info("found schema {} ", tableName);
+        schema = Schema.fromZNRecord(record);
+      }
+    } catch (Exception e) {
+      LOGGER.info("Ignorable exception while trying to read/parse schema for table:{}", tableName, e);
+    }
+    
     LOGGER.info("Adding or replacing segment {} for table {}, metadata {}", segmentId, tableName, offlineSegmentZKMetadata);
     try {
       SegmentMetadata segmentMetadataForCheck = new SegmentMetadataImpl(offlineSegmentZKMetadata);
@@ -107,7 +125,7 @@ public class SegmentFetcherAndLoader {
               LOGGER.info("Segment metadata same as before, loading {} of table {} (crc {}) from disk", segmentId,
                   tableName, localSegmentMetadata.getCrc());
               AbstractTableConfig tableConfig = ZKMetadataProvider.getOfflineTableConfig(_propertyStore, tableName);
-              _dataManager.addSegment(localSegmentMetadata, tableConfig);
+              _dataManager.addSegment(localSegmentMetadata, tableConfig, schema);
               // TODO Update zk metadata with CRC for this instance
               return;
             }
@@ -147,7 +165,7 @@ public class SegmentFetcherAndLoader {
             final String localSegmentDir = downloadSegmentToLocal(uri, tableName, segmentId);
             final SegmentMetadata segmentMetadata =
                 _metadataLoader.loadIndexSegmentMetadataFromDir(localSegmentDir);
-            _dataManager.addSegment(segmentMetadata, tableConfig);
+            _dataManager.addSegment(segmentMetadata, tableConfig, schema);
             LOGGER.info("Downloaded segment {} of table {} crc {} from controller", segmentId, tableName, segmentMetadata.getCrc());
 
             // Successfully loaded the segment, break out of the retry loop

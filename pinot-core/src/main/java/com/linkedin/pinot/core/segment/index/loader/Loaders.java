@@ -16,6 +16,7 @@
 package com.linkedin.pinot.core.segment.index.loader;
 
 import com.google.common.base.Preconditions;
+import com.linkedin.pinot.common.data.Schema;
 import com.linkedin.pinot.common.metadata.segment.IndexLoadingConfigMetadata;
 import com.linkedin.pinot.common.segment.ReadMode;
 import com.linkedin.pinot.common.utils.CommonConstants;
@@ -44,6 +45,11 @@ public class Loaders {
 
     public static com.linkedin.pinot.core.indexsegment.IndexSegment load(File indexDir, ReadMode readMode,
         IndexLoadingConfigMetadata indexLoadingConfigMetadata) throws Exception {
+      return load(indexDir, readMode, indexLoadingConfigMetadata, null);
+    }
+
+    public static com.linkedin.pinot.core.indexsegment.IndexSegment load(File indexDir, ReadMode readMode,
+        IndexLoadingConfigMetadata indexLoadingConfigMetadata, Schema schema) throws Exception {
 
       Preconditions.checkNotNull(indexDir);
       Preconditions.checkArgument(indexDir.exists(), "Index directory: {} does not exist", indexDir);
@@ -69,9 +75,17 @@ public class Loaders {
       metadata = new SegmentMetadataImpl(segmentDirectoryPath);
 
       // add or removes indexes based on indexLoadingConfigurationMetadata
-      try (SegmentPreProcessor preProcessor = new SegmentPreProcessor(segmentDirectoryPath, metadata, indexLoadingConfigMetadata)) {
+      try (SegmentPreProcessor preProcessor = new SegmentPreProcessor(segmentDirectoryPath, metadata, indexLoadingConfigMetadata, schema)) {
         preProcessor.process();
       }
+
+      // add new columns with default value or replace them (does not work for segment format v3
+      // yet)
+      SchemaChangeHandler schemaChangeHandler = new SchemaChangeHandler(segmentDirectoryPath,
+          metadata, indexLoadingConfigMetadata, schema);
+      metadata = schemaChangeHandler.process();
+
+
 
       SegmentDirectory segmentDirectory = SegmentDirectory.createFromLocalFS(segmentDirectoryPath, metadata, readMode);
 

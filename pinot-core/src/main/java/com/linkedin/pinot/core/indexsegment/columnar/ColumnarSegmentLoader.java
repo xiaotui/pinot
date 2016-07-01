@@ -15,6 +15,7 @@
  */
 package com.linkedin.pinot.core.indexsegment.columnar;
 
+import com.linkedin.pinot.common.data.Schema;
 import com.linkedin.pinot.common.metadata.segment.IndexLoadingConfigMetadata;
 import com.linkedin.pinot.common.segment.ReadMode;
 import com.linkedin.pinot.common.segment.SegmentMetadata;
@@ -41,7 +42,12 @@ public class ColumnarSegmentLoader {
     return loadSegment(new File(segmentMetadata.getIndexDir()), readMode, indexLoadingConfigMetadata);
   }
 
-  public static IndexSegment loadSegment(File indexDir, ReadMode readMode, IndexLoadingConfigMetadata indexLoadingConfigMetadata) throws Exception {
+  public static IndexSegment loadSegment(File indexDir, ReadMode readMode,
+      IndexLoadingConfigMetadata indexLoadingConfigMetadata) throws Exception {
+    return loadSegment(indexDir, readMode, indexLoadingConfigMetadata, null);
+  }
+
+  public static IndexSegment loadSegment(File indexDir, ReadMode readMode, IndexLoadingConfigMetadata indexLoadingConfigMetadata, Schema schema) throws Exception {
     return Loaders.IndexSegment.load(indexDir, readMode, indexLoadingConfigMetadata);
   }
 

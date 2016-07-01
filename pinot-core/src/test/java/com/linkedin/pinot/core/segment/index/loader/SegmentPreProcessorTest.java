@@ -133,7 +133,7 @@ public class SegmentPreProcessorTest {
       }
 
       SegmentPreProcessor processor =
-          new SegmentPreProcessor(segmentDirectoryFile, segmentMetadata, indexLoadingConfigMetadata);
+          new SegmentPreProcessor(segmentDirectoryFile, segmentMetadata, indexLoadingConfigMetadata, null);
       processor.process();
 
       long newLength = 0;
@@ -167,7 +167,7 @@ public class SegmentPreProcessorTest {
   public void testNullIndexLoadingConfig()
       throws IOException, ConfigurationException {
     SegmentMetadataImpl metadata = new SegmentMetadataImpl(segmentDirectoryFile);
-    SegmentPreProcessor processor = new SegmentPreProcessor(segmentDirectoryFile, metadata, null);
+    SegmentPreProcessor processor = new SegmentPreProcessor(segmentDirectoryFile, metadata, null, null);
     processor.process();
     // no exception is the validation that we handle null value for IndexLoadingConfig correctly
   }

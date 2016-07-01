@@ -15,10 +15,13 @@
  */
 package com.linkedin.pinot.core.data.manager.offline;
 
+import java.io.File;
+
 import org.apache.helix.ZNRecord;
 import org.apache.helix.store.zk.ZkHelixPropertyStore;
 import org.slf4j.LoggerFactory;
 import com.linkedin.pinot.common.config.AbstractTableConfig;
+import com.linkedin.pinot.common.data.Schema;
 import com.linkedin.pinot.common.metadata.instance.InstanceZKMetadata;
 import com.linkedin.pinot.common.metadata.segment.SegmentZKMetadata;
 import com.linkedin.pinot.common.segment.SegmentMetadata;
@@ -44,7 +47,7 @@ public class OfflineTableDataManager extends AbstractTableDataManager {
   }
 
   @Override
-  public void addSegment(SegmentMetadata segmentMetadata) throws Exception {
+  public void addSegment(SegmentMetadata segmentMetadata, Schema schema) throws Exception {
     IndexSegment indexSegment =
         ColumnarSegmentLoader.loadSegment(segmentMetadata, _readMode, _indexLoadingConfigMetadata);
     addSegment(indexSegment);

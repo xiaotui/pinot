@@ -187,7 +187,7 @@ public class RealtimeTableDataManager extends AbstractTableDataManager {
   }
 
   @Override
-  public void addSegment(SegmentMetadata segmentMetaToAdd) throws Exception {
+  public void addSegment(SegmentMetadata segmentMetaToAdd, Schema schema) throws Exception {
     throw new UnsupportedOperationException("Not supported addSegment(SegmentMetadata) in RealtimeTableDataManager"
       + segmentMetaToAdd.getName() + "," + segmentMetaToAdd.getTableName());
   }

@@ -17,6 +17,10 @@ package com.linkedin.pinot.core.segment.index.loader;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
+import com.linkedin.pinot.common.data.DimensionFieldSpec;
+import com.linkedin.pinot.common.data.FieldSpec;
+import com.linkedin.pinot.common.data.FieldSpec.FieldType;
+import com.linkedin.pinot.common.data.Schema;
 import com.linkedin.pinot.common.metadata.segment.IndexLoadingConfigMetadata;
 import com.linkedin.pinot.common.segment.ReadMode;
 import com.linkedin.pinot.core.io.reader.DataFileReader;
@@ -25,16 +29,35 @@ import com.linkedin.pinot.core.io.reader.SingleColumnMultiValueReader;
 import com.linkedin.pinot.core.io.reader.SingleColumnSingleValueReader;
 import com.linkedin.pinot.core.io.reader.impl.v1.FixedBitMultiValueReader;
 import com.linkedin.pinot.core.io.reader.impl.v1.FixedBitSingleValueReader;
+import com.linkedin.pinot.core.io.writer.SingleColumnMultiValueWriter;
+import com.linkedin.pinot.core.segment.creator.ColumnIndexCreationInfo;
+import com.linkedin.pinot.core.segment.creator.ForwardIndexType;
+import com.linkedin.pinot.core.segment.creator.InvertedIndexType;
+import com.linkedin.pinot.core.segment.creator.impl.SegmentColumnarIndexCreator;
+import com.linkedin.pinot.core.segment.creator.impl.SegmentDictionaryCreator;
+import com.linkedin.pinot.core.segment.creator.impl.V1Constants;
+import com.linkedin.pinot.core.segment.creator.impl.fwd.MultiValueUnsortedForwardIndexCreator;
+import com.linkedin.pinot.core.segment.creator.impl.fwd.SingleValueSortedForwardIndexCreator;
 import com.linkedin.pinot.core.segment.creator.impl.inv.OffHeapBitmapInvertedIndexCreator;
 import com.linkedin.pinot.core.segment.index.ColumnMetadata;
 import com.linkedin.pinot.core.segment.index.SegmentMetadataImpl;
 import com.linkedin.pinot.core.segment.memory.PinotDataBuffer;
 import com.linkedin.pinot.core.segment.store.ColumnIndexType;
 import com.linkedin.pinot.core.segment.store.SegmentDirectory;
+import com.linkedin.pinot.core.segment.store.SegmentDirectory.Writer;
+
+import scala.annotation.meta.field;
+
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,10 +73,12 @@ public class SegmentPreProcessor implements AutoCloseable {
   private SegmentDirectory segmentDirectory;
   private final SegmentMetadataImpl metadata;
   private final Optional<IndexLoadingConfigMetadata> indexConfig;
+
+  private Schema schema;
   //private IndexLoadingConfigMetadata indexConfig;
 
   SegmentPreProcessor(File indexDir, SegmentMetadataImpl metadata,
-      IndexLoadingConfigMetadata indexConfig) {
+      IndexLoadingConfigMetadata indexConfig, Schema schema) {
     Preconditions.checkNotNull(indexDir);
     Preconditions.checkNotNull(metadata);
     Preconditions.checkState(indexDir.exists(), "Segment directory: {} does not exist", indexDir);;
@@ -62,6 +87,7 @@ public class SegmentPreProcessor implements AutoCloseable {
     this.indexDir = indexDir;
     this.metadata = metadata;
     this.indexConfig = Optional.fromNullable(indexConfig);
+    this.schema = schema;
     // always use mmap. That's safest and performs well without impact from
     // -Xmx params
     // This is not final load of the segment
@@ -78,12 +104,14 @@ public class SegmentPreProcessor implements AutoCloseable {
       if (segmentWriter != null) {
         try {
           segmentWriter.saveAndClose();
-        } catch (Exception e) {
+        } catch (Throwable e) {
           LOGGER.error("Failed to close segment directory: {}", segmentDirectory, e);
         }
       }
     }
   }
+
+
 
   private void addRemoveInvertedIndices(SegmentDirectory.Writer segmentWriter)
       throws IOException {
@@ -100,15 +128,13 @@ public class SegmentPreProcessor implements AutoCloseable {
     PinotDataBuffer indexBuffer = segmentWriter.getIndexFor(columnMetadata.getColumnName(), ColumnIndexType.FORWARD_INDEX);
     DataFileReader reader;
     if (columnMetadata.isSingleValue()) {
-      SingleColumnSingleValueReader fwdIndexReader =
+       reader =
         new FixedBitSingleValueReader(indexBuffer, columnMetadata.getTotalDocs(),
             columnMetadata.getBitsPerElement(), columnMetadata.hasNulls());
-      reader = fwdIndexReader;
     } else {
-      SingleColumnMultiValueReader<? extends ReaderContext> fwdIndexReader =
+       reader =
           new FixedBitMultiValueReader(indexBuffer, columnMetadata.getTotalDocs(),
               columnMetadata.getTotalNumberOfEntries(), columnMetadata.getBitsPerElement(), false);
-      reader = fwdIndexReader;
     }
     return reader;
   }

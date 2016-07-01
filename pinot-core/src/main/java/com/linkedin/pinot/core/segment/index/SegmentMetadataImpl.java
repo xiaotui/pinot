@@ -166,6 +166,9 @@ public class SegmentMetadataImpl implements SegmentMetadata {
     setSchema(schema);
   }
 
+  public PropertiesConfiguration getSegmentMetadataPropertiesConfiguration() {
+    return _segmentMetadataPropertiesConfiguration;
+  }
   private void setSchema(Schema schema) {
     for (String columnName : schema.getColumnNames()) {
       _schema.addField(columnName, schema.getFieldSpecFor(columnName));
@@ -496,8 +499,16 @@ public class SegmentMetadataImpl implements SegmentMetadata {
     // if (!SegmentVersion.v1.toString().equalsIgnoreCase(segmentVersion)) {
     // fileNameBuilder.append("_").append(segmentVersion);
     // }
-    if (columnMetadata.isSingleValue()) {
-      if (columnMetadata.isSorted()) {
+    
+    boolean singleValue = true;
+    boolean sorted = true;
+    if(columnMetadata!=null){
+      singleValue = columnMetadata.isSingleValue();
+      sorted = columnMetadata.isSorted();
+    }
+    if (singleValue) {
+      
+      if (sorted) {
         fileNameBuilder.append(V1Constants.Indexes.SORTED_FWD_IDX_FILE_EXTENTION);
       } else {
         fileNameBuilder.append(V1Constants.Indexes.UN_SORTED_SV_FWD_IDX_FILE_EXTENTION);

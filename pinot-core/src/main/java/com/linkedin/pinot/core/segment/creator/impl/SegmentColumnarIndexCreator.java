@@ -259,33 +259,44 @@ public class SegmentColumnarIndexCreator implements SegmentCreator {
 
     for (final String column : indexCreationInfoMap.keySet()) {
       final ColumnIndexCreationInfo columnIndexCreationInfo = indexCreationInfoMap.get(column);
-      final int uniqueValueCount = columnIndexCreationInfo.getDistinctValueCount();
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, CARDINALITY),
-          String.valueOf(uniqueValueCount));
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, TOTAL_DOCS), String.valueOf(totalDocs));
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, TOTAL_RAW_DOCS),
-          String.valueOf(totalRawDocs));
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, TOTAL_AGG_DOCS),
-          String.valueOf(totalAggDocs));
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, DATA_TYPE),
-          schema.getFieldSpecFor(column).getDataType().toString());
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, BITS_PER_ELEMENT),
-          String.valueOf(SingleValueUnsortedForwardIndexCreator.getNumOfBits(uniqueValueCount)));
+      int dictionaryElementSize = dictionaryCreatorMap.get(column).getStringColumnMaxLength();
+      addColumnMetadataInfo(properties, column, columnIndexCreationInfo,
+          schema.getFieldSpecFor(column), totalDocs, totalRawDocs, totalAggDocs,
+          dictionaryElementSize);
+    }
 
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, DICTIONARY_ELEMENT_SIZE),
-          String.valueOf(dictionaryCreatorMap.get(column).getStringColumnMaxLength()));
+    properties.save();
+  }
 
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, COLUMN_TYPE),
-          String.valueOf(schema.getFieldSpecFor(column).getFieldType().toString()));
+  public static void addColumnMetadataInfo(final PropertiesConfiguration properties, final String column,
+      final ColumnIndexCreationInfo columnIndexCreationInfo, FieldSpec fieldSpec, int totalDocs, int totalRawDocs, int totalAggDocs, int dictionaryElementSize) {
+    final int uniqueValueCount = columnIndexCreationInfo.getDistinctValueCount();
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, CARDINALITY),
+        String.valueOf(uniqueValueCount));
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, TOTAL_DOCS), String.valueOf(totalDocs));
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, TOTAL_RAW_DOCS),
+        String.valueOf(totalRawDocs));
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, TOTAL_AGG_DOCS),
+        String.valueOf(totalAggDocs));
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, DATA_TYPE),
+        fieldSpec.getDataType().toString());
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, BITS_PER_ELEMENT),
+        String.valueOf(SingleValueUnsortedForwardIndexCreator.getNumOfBits(uniqueValueCount)));
 
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, IS_SORTED),
-          String.valueOf(columnIndexCreationInfo.isSorted()));
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, DICTIONARY_ELEMENT_SIZE),
+        String.valueOf(dictionaryElementSize));
 
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, HAS_NULL_VALUE),
-          String.valueOf(columnIndexCreationInfo.hasNulls()));
-      properties.setProperty(
-          V1Constants.MetadataKeys.Column.getKeyFor(column, V1Constants.MetadataKeys.Column.HAS_DICTIONARY),
-          String.valueOf(columnIndexCreationInfo.isCreateDictionary()));
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, COLUMN_TYPE),
+        String.valueOf(fieldSpec.getFieldType().toString()));
+
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, IS_SORTED),
+        String.valueOf(columnIndexCreationInfo.isSorted()));
+
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, HAS_NULL_VALUE),
+        String.valueOf(columnIndexCreationInfo.hasNulls()));
+    properties.setProperty(
+        V1Constants.MetadataKeys.Column.getKeyFor(column, V1Constants.MetadataKeys.Column.HAS_DICTIONARY),
+        String.valueOf(columnIndexCreationInfo.isCreateDictionary()));
 
 // TODO: after fixing the server-side dependency on HAS_INVERTED_INDEX and deployed, set HAS_INVERTED_INDEX properly
 // The hasInvertedIndex flag in segment metadata is picked up in ColumnMetadata, and will be used during the query
@@ -296,21 +307,26 @@ public class SegmentColumnarIndexCreator implements SegmentCreator {
 //      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, HAS_INVERTED_INDEX),
 //          String.valueOf(config.getInvertedIndexCreationColumns().contains(column)));
 
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, HAS_INVERTED_INDEX),
-          String.valueOf(true));
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, HAS_INVERTED_INDEX),
+        String.valueOf(true));
 
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, IS_SINGLE_VALUED),
-          String.valueOf(schema.getFieldSpecFor(column).isSingleValueField()));
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, IS_SINGLE_VALUED),
+        String.valueOf(fieldSpec.isSingleValueField()));
 
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, MAX_MULTI_VALUE_ELEMTS),
-          String.valueOf(columnIndexCreationInfo.getMaxNumberOfMutiValueElements()));
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, MAX_MULTI_VALUE_ELEMTS),
+        String.valueOf(columnIndexCreationInfo.getMaxNumberOfMutiValueElements()));
 
-      properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, TOTAL_NUMBER_OF_ENTRIES),
-          String.valueOf(columnIndexCreationInfo.getTotalNumberOfEntries()));
-
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, TOTAL_NUMBER_OF_ENTRIES),
+        String.valueOf(columnIndexCreationInfo.getTotalNumberOfEntries()));
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, IS_AUTO_GENERATED),
+        String.valueOf(columnIndexCreationInfo.isAutoGenerated()));
+    Object defaultNullValue = fieldSpec.getDefaultNullValue();
+    if (columnIndexCreationInfo.getDefaultNullValue() != null) {
+      defaultNullValue = columnIndexCreationInfo.getDefaultNullValue();
     }
-
-    properties.save();
+    properties.setProperty(V1Constants.MetadataKeys.Column.getKeyFor(column, DEFAULT_NULL_VALUE),
+        String.valueOf(defaultNullValue));
+    
   }
 
 }

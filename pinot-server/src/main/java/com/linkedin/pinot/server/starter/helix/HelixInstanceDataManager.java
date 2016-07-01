@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.linkedin.pinot.common.config.AbstractTableConfig;
 import com.linkedin.pinot.common.config.TableNameBuilder;
+import com.linkedin.pinot.common.data.Schema;
 import com.linkedin.pinot.common.metadata.instance.InstanceZKMetadata;
 import com.linkedin.pinot.common.metadata.segment.OfflineSegmentZKMetadata;
 import com.linkedin.pinot.common.metadata.segment.RealtimeSegmentZKMetadata;
@@ -145,7 +146,7 @@ public class HelixInstanceDataManager implements InstanceDataManager {
 
   // Called for offline segments only
   @Override
-  public synchronized void addSegment(SegmentMetadata segmentMetadata, AbstractTableConfig tableConfig) throws Exception {
+  public synchronized void addSegment(SegmentMetadata segmentMetadata, AbstractTableConfig tableConfig, Schema schema) throws Exception {
     if (segmentMetadata == null || segmentMetadata.getTableName() == null) {
       throw new RuntimeException("Error: adding invalid SegmentMetadata!");
     }
@@ -167,7 +168,7 @@ public class HelixInstanceDataManager implements InstanceDataManager {
         }
       }
     }
-    _tableDataManagerMap.get(tableName).addSegment(segmentMetadata);
+    _tableDataManagerMap.get(tableName).addSegment(segmentMetadata, schema);
     LOGGER.info("Successfully added a segment {} of table {}", segmentMetadata.getName(), segmentMetadata.getTableName());
   }
 
