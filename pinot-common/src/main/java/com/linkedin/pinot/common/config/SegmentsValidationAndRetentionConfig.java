@@ -97,6 +97,9 @@ public class SegmentsValidationAndRetentionConfig {
   public String getReplication() {
     return replication;
   }
+  public int getReplicationNumber() {
+    return Integer.parseInt(replication);
+  }
 
   public void setReplication(String replication) {
     this.replication = replication;

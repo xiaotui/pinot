@@ -187,6 +187,10 @@ public abstract class AbstractTableConfig {
 
   public abstract IndexingConfig getIndexingConfig();
 
+  public QuotaConfig getQuotaConfig() {
+    return quotaConfig;
+  }
+
   @Override
   public String toString() {
     final StringBuilder result = new StringBuilder();
@@ -195,6 +199,7 @@ public abstract class AbstractTableConfig {
     result.append("tenant : " + tenantConfig.toString() + " \n");
     result.append("segments : " + validationConfig.toString() + "\n");
     result.append("customConfigs : " + customConfigs.toString() + "\n");
+    result.append("quota : " + quotaConfig.toString() + "\n");
     return result.toString();
   }
 
